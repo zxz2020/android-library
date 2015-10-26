@@ -41,6 +41,8 @@ public class OwnCloudVersion implements Comparable<OwnCloudVersion> {
 
     public static final int MINIMUM_VERSION_WITH_FORBIDDEN_CHARS = 0x08010000; // 8.1
 
+    public static final int MINIMUM_VERSION_WITH_NATIVE_GALLERY = 0x08020000; // 8.2
+
     public static final int MINIMUM_SERVER_VERSION_FOR_REMOTE_THUMBNAILS = 0x07080000; // 7.8.0
 
     public static final int VERSION_8 = 0x08000000; // 8.0
@@ -129,6 +131,10 @@ public class OwnCloudVersion implements Comparable<OwnCloudVersion> {
 
     public boolean isVersionWithForbiddenCharacters() {
         return (mVersion >= MINIMUM_VERSION_WITH_FORBIDDEN_CHARS);
+    }
+
+    public boolean supportsNativeGallery() {
+        return (mVersion >= MINIMUM_VERSION_WITH_NATIVE_GALLERY);
     }
 
     public boolean supportsRemoteThumbnails() {
