@@ -73,6 +73,7 @@ public class GetRemoteUserAvatarOperation extends RemoteOperation {
 			status = client.executeMethod(get);
 
 			if(isSuccess(status)) {
+				// TODO check if status is success when avatar/user doesn't exist
 				 byte[] response = get.getResponseBody();
 				 Bitmap avatar = BitmapFactory.decodeByteArray(response, 0, response.length);
 
