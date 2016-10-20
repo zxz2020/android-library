@@ -120,6 +120,9 @@ public class DownloadRemoteFileOperation extends RemoteOperation {
                 long transferred = 0;
                 
                 Header contentLength = mGet.getResponseHeader("Content-Length");
+                if (contentLength == null) {
+                    contentLength = mGet.getResponseHeader("content-length");
+                }
                 long totalToTransfer = (contentLength != null &&
                         contentLength.getValue().length() >0) ?
                         Long.parseLong(contentLength.getValue()) : 0;
