@@ -85,6 +85,10 @@ public class DownloadRemoteFileOperation extends RemoteOperation {
         	int status = downloadFile(client, tmpFile);
         	result = new RemoteOperationResult(isSuccess(status), status,
                     (mGet != null ? mGet.getResponseHeaders() : null));
+            Header[] header = mGet.getResponseHeaders();
+            for(int i=0; i<header.length; i++) {
+                Log_OC.v(TAG, "-- header: " + header[i]);
+            }
         	Log_OC.i(TAG, "Download of " + mRemotePath + " to " + getTmpPath() + ": " +
                     result.getLogMessage());
 
@@ -109,6 +113,7 @@ public class DownloadRemoteFileOperation extends RemoteOperation {
         try {
             status = client.executeMethod(mGet);
             if (isSuccess(status)) {
+                Log_OC.d(TAG, "-- downloading into " + targetFile.getAbsolutePath());
                 targetFile.createNewFile();
                 BufferedInputStream bis = new BufferedInputStream(mGet.getResponseBodyAsStream());
                 fos = new FileOutputStream(targetFile);
@@ -118,10 +123,12 @@ public class DownloadRemoteFileOperation extends RemoteOperation {
                 long totalToTransfer = (contentLength != null &&
                         contentLength.getValue().length() >0) ?
                         Long.parseLong(contentLength.getValue()) : 0;
+                Log_OC.d(TAG, "-- content length is " + totalToTransfer);
 
                 byte[] bytes = new byte[4096];
                 int readResult = 0;
                 while ((readResult = bis.read(bytes)) != -1) {
+                    Log_OC.d(TAG, "-- read " + readResult + " bytes");
                     synchronized(mCancellationRequested) {
                         if (mCancellationRequested.get()) {
                             mGet.abort();
@@ -130,6 +137,7 @@ public class DownloadRemoteFileOperation extends RemoteOperation {
                     }
                     fos.write(bytes, 0, readResult);
                     transferred += readResult;
+                    Log_OC.d(TAG, "-- transferred " + transferred + " bytes");
                     synchronized (mDataTransferListeners) {
                         it = mDataTransferListeners.iterator();
                         while (it.hasNext()) {
@@ -139,6 +147,7 @@ public class DownloadRemoteFileOperation extends RemoteOperation {
                     }
                 }
                 if (transferred == totalToTransfer) {  // Check if the file is completed
+                    Log_OC.d(TAG, "-- transferred equals to totalToTransfer");
                 	savedFile = true;
                 	Header modificationTime = mGet.getResponseHeader("Last-Modified");
                     if (modificationTime == null) {
@@ -157,8 +166,9 @@ public class DownloadRemoteFileOperation extends RemoteOperation {
                     }
 
                 } else {
+                    Log_OC.d(TAG, "-- transferred " + transferred + ", expecting " + totalToTransfer);
                 	client.exhaustResponse(mGet.getResponseBodyAsStream());
-                    // TODO some kind of error control!
+                    // TODO error or success, but can't just delete temporary file in 'finally' block and forget it
                 }
                 
             } else {
@@ -168,6 +178,7 @@ public class DownloadRemoteFileOperation extends RemoteOperation {
         } finally {
             if (fos != null) fos.close();
             if (!savedFile && targetFile.exists()) {
+                Log_OC.d(TAG, "Deleting temporary file");
                 targetFile.delete();
             }
             mGet.releaseConnection();    // let the connection available for other methods
