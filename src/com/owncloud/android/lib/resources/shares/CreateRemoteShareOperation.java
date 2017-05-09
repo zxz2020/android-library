@@ -26,8 +26,13 @@
 
 package com.owncloud.android.lib.resources.shares;
 
+import android.net.Uri;
+import android.util.Pair;
+
 import org.apache.commons.httpclient.HttpStatus;
 import org.apache.commons.httpclient.methods.PostMethod;
+import org.apache.commons.httpclient.methods.PutMethod;
+import org.apache.commons.httpclient.methods.StringRequestEntity;
 
 import com.owncloud.android.lib.common.OwnCloudClient;
 import com.owncloud.android.lib.common.operations.RemoteOperation;
@@ -55,6 +60,8 @@ public class CreateRemoteShareOperation extends RemoteOperation {
     private static final String PARAM_SHARE_WITH = "shareWith";
     private static final String PARAM_PERMISSIONS = "permissions";
     private static final String FORMAT_EXPIRATION_DATE = "yyyy-MM-dd";
+    private static final String ENTITY_CONTENT_TYPE = "application/x-www-form-urlencoded";
+    private static final String ENTITY_CHARSET = "UTF-8";
 
     private String mRemoteFilePath;
     private ShareType mShareType;
@@ -207,13 +214,21 @@ public class CreateRemoteShareOperation extends RemoteOperation {
                 post.addParameter(PARAM_NAME, mName);
             }
 
+            /*
+             This doesn't work in POST.
+             In OC 8.2 the operation FAIL reporting a format error in the parameter.
+             In OC 10.0 the header is ignored, if exists a default expiration date it is anyway.
+            if (mExpirationDateInMillis < 0) {
+                // clear expiration date
+                post.addParameter(PARAM_EXPIRATION_DATE, "");
+            }*/
             if (mExpirationDateInMillis > 0) {
-                DateFormat dateFormat = new SimpleDateFormat(FORMAT_EXPIRATION_DATE, Locale.getDefault());
+                DateFormat dateFormat = new SimpleDateFormat(FORMAT_EXPIRATION_DATE, Locale.GERMAN);
                 Calendar expirationDate = Calendar.getInstance();
                 expirationDate.setTimeInMillis(mExpirationDateInMillis);
                 String formattedExpirationDate = dateFormat.format(expirationDate.getTime());
                 post.addParameter(PARAM_EXPIRATION_DATE, formattedExpirationDate);
-            }
+            }   // == 0 is interpreted as "don't change it"
 
             if (mPublicUpload) {
                 post.addParameter(PARAM_PUBLIC_UPLOAD, Boolean.toString(true));
@@ -247,6 +262,19 @@ public class CreateRemoteShareOperation extends RemoteOperation {
                             emptyShare.getRemoteId()
                     );
                     result = getInfo.execute(client);
+
+                    // delete default expiration date set by server if users asked no expiration date
+                    if (mExpirationDateInMillis < 0) {
+                        OCShare fullShare = (OCShare) result.getData().get(0);
+                        if (fullShare.getExpirationDate() > 0) {
+                            deleteDefaultExpirationDate(client, emptyShare.getRemoteId());
+                        }
+                        // and get full info again
+                        getInfo = new GetRemoteShareOperation(
+                            emptyShare.getRemoteId()
+                        );
+                        result = getInfo.execute(client);
+                    }
                 }
 
             } else {
@@ -263,6 +291,41 @@ public class CreateRemoteShareOperation extends RemoteOperation {
             }
         }
         return result;
+    }
+
+    private void deleteDefaultExpirationDate(OwnCloudClient client, long remoteShareId) {
+        PutMethod put = null;
+
+        try {
+            // Put Method
+            Uri requestUri = client.getBaseUri();
+            Uri.Builder uriBuilder = requestUri.buildUpon();
+            uriBuilder.appendEncodedPath(ShareUtils.SHARING_API_PATH.substring(1));
+            uriBuilder.appendEncodedPath(Long.toString(remoteShareId));
+            String uriString = uriBuilder.build().toString();
+            put = new PutMethod(uriString);
+
+            put.setRequestEntity(new StringRequestEntity(
+                PARAM_EXPIRATION_DATE + "=",    // value is empty string
+                ENTITY_CONTENT_TYPE,
+                ENTITY_CHARSET
+            ));
+
+            put.addRequestHeader(OCS_API_HEADER, OCS_API_HEADER_VALUE);
+
+            client.executeMethod(put);
+
+        } catch (Exception e) {
+            Log_OC.w(TAG, "Exception while deleting default expiration date of new share");
+
+        } finally {
+            if (put != null) {
+                put.releaseConnection();
+            }
+        }
+
+        // result is ignored on purpose
+
     }
 
     private boolean isSuccess(int status) {
