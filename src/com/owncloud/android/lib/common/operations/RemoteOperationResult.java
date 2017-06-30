@@ -553,7 +553,7 @@ public class RemoteOperationResult implements Serializable {
         return (mRedirectedLocation != null && !(mRedirectedLocation.toLowerCase().startsWith("https://")));
     }
 
-    public ArrayList<String> getAuthenticateHeader() {
+    public ArrayList<String> getAuthenticateHeaders() {
         return mAuthenticate;
     }
 
