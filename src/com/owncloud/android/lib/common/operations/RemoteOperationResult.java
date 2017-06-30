@@ -128,7 +128,7 @@ public class RemoteOperationResult implements Serializable {
     private Exception mException = null;
     private ResultCode mCode = ResultCode.UNKNOWN_ERROR;
     private String mRedirectedLocation;
-    private String mAuthenticate;
+    private ArrayList<String> mAuthenticate = new ArrayList<>();
     private String mLastPermanentLocation = null;
 
     private ArrayList<Object> mData;
@@ -313,8 +313,7 @@ public class RemoteOperationResult implements Serializable {
                     continue;
                 }
                 if ("www-authenticate".equals(current.getName().toLowerCase())) {
-                    mAuthenticate = current.getValue();
-                    break;
+                    mAuthenticate.add(current.getValue().toLowerCase());
                 }
             }
         }
@@ -554,7 +553,7 @@ public class RemoteOperationResult implements Serializable {
         return (mRedirectedLocation != null && !(mRedirectedLocation.toLowerCase().startsWith("https://")));
     }
 
-    public String getAuthenticateHeader() {
+    public ArrayList<String> getAuthenticateHeader() {
         return mAuthenticate;
     }
 
